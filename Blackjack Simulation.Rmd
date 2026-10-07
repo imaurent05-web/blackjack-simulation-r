@@ -1,0 +1,180 @@
+---
+title: "Blackjack Simulation"
+output: html_document
+---
+
+```{r}
+create_deck <- function(){
+  deck <- data.frame(
+    suit = rep(c("Hearts", "Spades", "Diamonds", "Clubs"), each = 13),
+    rank = rep(c(2:10, "J", "Q", "K", "A"), 4),
+    value = rep(c(2:10, 10, 10, 10, 11), 4)
+  )
+  return(deck)
+}
+
+# deck <- create_deck()
+# deck
+```
+
+```{r}
+shuffle_deck <- function(deck){
+  shuffled_index <- sample(1:52, size = 52)
+  shuffled_deck <- deck[shuffled_index, ]
+  return(shuffled_deck)
+}
+
+# shuffled_deck <- shuffle_deck(deck)
+# shuffled_deck
+```
+
+```{r}
+deal_hands <- function(shuffled_deck){
+  player_hand <- shuffled_deck[c(1, 3), ]
+  dealer_hand <- shuffled_deck[c(2, 4), ]
+  next_card <- 5
+  return(list(
+    player_hand = player_hand,
+    dealer_hand = dealer_hand,
+    next_card = next_card
+  ))
+}
+
+# deal_result <- deal_hands(shuffled_deck)
+# player_hand <- deal_result$player_hand
+# dealer_hand <- deal_result$dealer_hand
+# next_card <- deal_result$next_card
+
+# deal_result
+```
+
+```{r}
+calculate_hand <- function(hand){
+  result <- sum(hand$value)
+  ace_count <- sum(hand$rank == "A")
+  while(result > 21 && ace_count > 0){
+    result <- result - 10
+    ace_count <- ace_count - 1
+  }
+  return(result)
+}
+
+# player_total <- calculate_hand(player_hand)
+# dealer_total <- calculate_hand(dealer_hand)
+# player_total
+# dealer_total
+```
+
+```{r}
+hit_until_17 <- function(hand, shuffled_deck, next_card){
+  total <- calculate_hand(hand)
+  while(total < 17){
+    hand <- rbind(hand, shuffled_deck[next_card, ])
+    next_card <- next_card + 1
+    total <- calculate_hand(hand)
+  }
+  return(list(
+    hand = hand,
+    total = total,
+    next_card = next_card
+  ))
+}
+
+# hit_result_player <- hit_until_17(player_hand, shuffled_deck, next_card)
+# player_hand <- hit_result_player$hand
+# player_total <- hit_result_player$total
+# next_card <- hit_result_player$next_card
+
+# if(player_total <= 21){
+#   hit_result_dealer <- hit_until_17(dealer_hand, shuffled_deck, next_card)
+#   dealer_hand <- hit_result_dealer$hand
+#   dealer_total <- hit_result_dealer$total
+#   next_card <- hit_result_dealer$next_card
+# }
+```
+
+```{r}
+determine_winner <- function(player_total, dealer_total){
+  if(player_total > 21){
+    result <- "Dealer wins"
+  } else if(dealer_total >21){
+    result <- "Player wins"
+  } else if(player_total == dealer_total){
+    result <- "Push"
+  } else if(player_total > dealer_total){
+    result <- "Player wins"
+  } else{
+    result <- "Dealer wins"
+  }
+  return(result)
+}
+
+# winner <- determine_winner(player_total, dealer_total)
+# winner
+```
+
+```{r}
+play_game <- function(){
+  deck <- create_deck()
+  shuffled_deck <- shuffle_deck(deck)
+  deal_result <- deal_hands(shuffled_deck)
+  player_hand <- deal_result$player_hand
+  dealer_hand <- deal_result$dealer_hand
+  next_card <- deal_result$next_card
+  player_total <- calculate_hand(player_hand)
+  dealer_total <- calculate_hand(dealer_hand)
+  hit_result_player <- hit_until_17(player_hand, shuffled_deck, next_card)
+  player_hand <- hit_result_player$hand
+  player_total <- hit_result_player$total
+  next_card <- hit_result_player$next_card
+  if(player_total <= 21){
+    hit_result_dealer <- hit_until_17(dealer_hand, shuffled_deck, next_card)
+    dealer_hand <- hit_result_dealer$hand
+    dealer_total <- hit_result_dealer$total
+    next_card <- hit_result_dealer$next_card
+  }
+  winner <- determine_winner(player_total, dealer_total)
+  cards_dealt <- next_card - 1
+  return(list(
+    player_hand = player_hand,
+    dealer_hand = dealer_hand,
+    player_total = player_total,
+    dealer_total = dealer_total,
+    cards_dealt = cards_dealt,
+    winner = winner
+  ))
+}
+
+game_result <- play_game()
+game_result
+```
+
+```{r}
+game_results <- list()
+for(i in 1:10000){
+  game_results[[i]] <- play_game()
+}
+```
+
+```{r}
+simulation_data <- data.frame()
+for(i in 1:10000){
+  player_total <- game_results[[i]]$player_total
+  dealer_total <- game_results[[i]]$dealer_total
+  cards_dealt <- game_results[[i]]$cards_dealt
+  winner <- game_results[[i]]$winner
+  
+  game_row <- data.frame(
+    game = i,
+    player_total = player_total,
+    dealer_total = dealer_total,
+    cards_dealt = cards_dealt,
+    winner = winner
+  )
+  
+  simulation_data <- rbind(simulation_data, game_row)
+}
+
+simulation_data
+```
+
