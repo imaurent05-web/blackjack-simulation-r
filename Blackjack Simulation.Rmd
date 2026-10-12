@@ -3,6 +3,8 @@ title: "Blackjack Simulation"
 output: html_document
 ---
 
+Blackjack Simulation
+
 ```{r}
 create_deck <- function(){
   deck <- data.frame(
@@ -178,3 +180,260 @@ for(i in 1:10000){
 simulation_data
 ```
 
+Analysis
+
+```{r}
+win_counts <- table(simulation_data$winner)
+
+win_proportions <- win_counts/nrow(simulation_data)
+win_proportions
+
+win_percentages <- win_proportions * 100
+win_percentages
+```
+
+```{r}
+outcome_reasoning <- function(player_total, dealer_total){
+  if(player_total > 21){
+    result <- "Player bust"
+  } else if(dealer_total > 21){
+    result <- "Dealer bust"
+  } else if(player_total == dealer_total){
+    result <- "Push"
+  } else if(player_total > dealer_total){
+    result <- "Player wins by higher total"
+  } else {
+    result <- "Dealer wins by higher total"
+  }
+  return(result)
+}
+
+outcome_reason <- character()
+for(i in 1:nrow(simulation_data)){
+  outcome_reason[i] <- outcome_reasoning(simulation_data$player_total[i], simulation_data$dealer_total[i])
+}
+# head(outcome_reason)
+simulation_data <- cbind(simulation_data, outcome_reason)
+# head(simulation_data)
+
+
+
+outcome_counts <- table(simulation_data$outcome_reason)
+
+outcome_proportions <- outcome_counts/nrow(simulation_data)
+outcome_proportions
+
+outcome_percentages <- outcome_proportions * 100
+outcome_percentages
+```
+
+```{r}
+#Pr(player bust | player loss)
+pb_pl <- outcome_proportions["Player bust"]/win_proportions["Dealer wins"]
+pb_pl
+
+#Pr(player wins | player did not bust)
+pw_pbc <- win_proportions["Player wins"]/( 1 - outcome_proportions["Player bust"] )
+pw_pbc
+
+#Pr(dealer wins | dealer did not bust)
+dw_dbc <- win_proportions["Dealer wins"]/( 1 - outcome_proportions["Dealer bust"])
+dw_dbc
+```
+
+```{r}
+card_counts <- table(simulation_data$cards_dealt)
+card_counts
+
+#Pr(cards)
+card_proportions <- card_counts/nrow(simulation_data)
+card_proportions
+
+#Pr(X > 6)
+p_g6 <- mean(simulation_data$cards_dealt > 6)
+p_g6
+
+#Pr(5 <= X <= 7)
+p_b57 <- mean(simulation_data$cards_dealt >= 5 & simulation_data$cards_dealt <= 7)
+p_b57
+
+
+
+e_x <- sum(as.numeric(names(card_proportions)) * card_proportions)
+e_x
+
+avg_cards <- mean(simulation_data$cards_dealt)
+avg_cards
+
+
+
+e_x2 <- sum(as.numeric(names(card_proportions))^2 * card_proportions)
+var_x <- e_x2 - (e_x)^2
+var_x
+
+
+
+sd_x <- sqrt(var_x)
+sd_x
+
+sd_cards <- sd(simulation_data$cards_dealt)
+sd_cards
+
+
+
+hist(simulation_data$cards_dealt, main = "Histogram of Cards Dealt", xlab = "Cards Dealt", breaks = seq(3.5, max(simulation_data$cards_dealt) + 0.5, by = 1))
+
+median_cards <- median(simulation_data$cards_dealt)
+median_cards
+```
+
+```{r}
+#Y = X - 4
+y <- simulation_data$cards_dealt - 4
+
+#Poisson?
+e_y <- mean(y)
+var_y <- var(y)
+
+dpois(0, e_y)
+observed_zero <- mean(y == "0")
+observed_zero
+
+y_values <- seq(0, max(y), by = 1)
+poisson_probs <- dpois(y_values, e_y)
+poisson_probs
+
+y_counts <- table(y)
+y_proportions <- y_counts / nrow(simulation_data)
+y_proportions
+
+plot(x = y_values, y = as.numeric(y_proportions), type = "h", main = "Observed vs Poisson Distribution", xlab = "Additional Cards Dealt", ylab = "Probability")
+points(x = y_values, y = poisson_probs, pch = 16)
+
+sse_pois <- sum((as.numeric(y_proportions) - poisson_probs)^2)
+sse_pois
+
+#Binomial?
+binom_p <- e_y / 5
+binom_p
+
+binom_probs <- dbinom(x = y_values, size = 5, prob = binom_p)
+binom_probs
+
+plot(x = y_values, y = as.numeric(y_proportions), type = "h", main = "Observed vs Binomial Distribution", xlab = "Additional Cards Dealt", ylab = "Probability")
+points(x = y_values, y = binom_probs, pch = 16, col = "blue")
+
+sse_binom <- sum((as.numeric(y_proportions) - binom_probs)^2)
+sse_binom
+
+binom_errors <- abs(as.numeric(y_proportions) - binom_probs)
+binom_errors
+
+binom_max_error <- y_values[which.max(binom_errors)]
+binom_max_error
+
+largest_binom_error <- max(binom_errors)
+largest_binom_error
+
+y_proportions["1"] - binom_probs[2]
+
+#outcome reasons for Y = 1
+reasons <- table(simulation_data$outcome_reason[y == 1])
+reasons
+
+pbust_y1 <- reasons["Player bust"] / y_counts["1"]
+pbust_y1
+
+y1_pbust <- reasons["Player bust"] / outcome_counts["Player bust"]
+y1_pbust
+```
+
+```{r}
+player_total_counts <- table(simulation_data$player_total)
+dealer_total_counts <- table(simulation_data$dealer_total)
+player_total_counts
+dealer_total_counts
+
+#Pr(final hand counts)
+player_total_proportions <- player_total_counts/nrow(simulation_data)
+dealer_total_proportions <- dealer_total_counts/nrow(simulation_data)
+player_total_proportions
+dealer_total_proportions
+
+
+
+e_p <- sum(as.numeric(names(player_total_proportions)) * player_total_proportions)
+e_d <- sum(as.numeric(names(dealer_total_proportions)) * dealer_total_proportions)
+e_p
+e_d
+
+avg_player_total <- mean(simulation_data$player_total)
+avg_dealer_total <- mean(simulation_data$dealer_total)
+avg_player_total
+avg_dealer_total
+
+
+
+e_p2 <- sum(as.numeric(names(player_total_proportions))^2 * player_total_proportions)
+e_d2 <- sum(as.numeric(names(dealer_total_proportions))^2 * dealer_total_proportions)
+var_p <- e_p2 - (e_p)^2
+var_d <- e_d2 - (e_d)^2
+var_p
+var_d
+
+
+
+sd_p <- sqrt(var_p)
+sd_d <- sqrt(var_d)
+sd_p
+sd_d
+
+sd_player_total <- sd(simulation_data$player_total)
+sd_dealer_total <- sd(simulation_data$dealer_total)
+sd_player_total
+sd_dealer_total
+
+
+
+hist(simulation_data$player_total, main = "Histogram of Player Totals", xlab = "Player Totals", breaks = seq(16.5, max(simulation_data$player_total) + 0.5, by = 1))
+
+hist(simulation_data$dealer_total, main = "Histogram of Dealer Totals", xlab = "Dealer Totals", breaks = seq(3.5, max(simulation_data$dealer_total) + 0.5, by = 1))
+
+median_player_total <- median(simulation_data$player_total)
+median_dealer_total <- median(simulation_data$dealer_total)
+median_player_total
+median_dealer_total
+```
+
+```{r}
+p_win_100 <- mean(simulation_data$winner[1:100] == "Player wins")
+p_win_100
+
+p_win_1000 <- mean(simulation_data$winner[1:1000] == "Player wins")
+p_win_1000
+
+convergence <-c(p_win_100, p_win_1000, win_proportions["Player wins"])
+plot(convergence)
+
+cumulative_wins <- cumsum(simulation_data$winner == "Player wins")
+running_win_probability <- cumulative_wins / 1:nrow(simulation_data)
+plot(x = 1:nrow(simulation_data), y = running_win_probability, type = "l", main = "Player Win Probability per Number of Games", xlab = "Number of Games", ylab = "Player Win Probability")
+abline(h = win_proportions["Player wins"])
+```
+
+```{r}
+#Standard Error
+player_wins <- win_proportions["Player wins"]
+se_win <- sqrt((player_wins * (1- player_wins)) / nrow(simulation_data))
+se_win
+
+#Margin of Error
+margin_error <- 1.96 * se_win
+margin_error
+
+#One Proportion Z Confidence Interval
+lower_bound <- player_wins - margin_error
+upper_bound <- player_wins + margin_error
+lower_bound
+upper_bound
+```
